@@ -8,7 +8,8 @@ import {
   X,
   Save,
   Trash2,
-  Paperclip
+  Paperclip,
+  Send
 } from 'lucide-react';
 import { ContentCalendar } from '@/types';
 
@@ -24,6 +25,7 @@ interface ContentDetailModalProps {
   onClose: () => void;
   onSave: (content: ContentCalendar) => void;
   onDelete: (id: string) => void;
+  onPost?: (content: ContentCalendar) => void;
 }
 
 export function ContentDetailModal({ 
@@ -31,10 +33,12 @@ export function ContentDetailModal({
   isOpen, 
   onClose, 
   onSave, 
-  onDelete 
+  onDelete,
+  onPost
 }: ContentDetailModalProps) {
   const [formData, setFormData] = useState<Partial<ContentCalendar>>({});
   const [loading, setLoading] = useState(false);
+  const [posting, setPosting] = useState(false);
 
   useEffect(() => {
     if (content) {
@@ -79,6 +83,30 @@ export function ContentDetailModal({
     if (confirm('Are you sure you want to delete this content?')) {
       await onDelete(content.id);
       onClose();
+    }
+  };
+
+  const handlePost = async () => {
+    if (!formData.title || !formData.posting_date) {
+      alert('Please fill in all required fields before posting.');
+      return;
+    }
+
+    if (!onPost) {
+      alert('Posting functionality is not available yet. Please save your content first.');
+      return;
+    }
+
+    setPosting(true);
+    try {
+      await onPost(formData as ContentCalendar);
+      // Don't close the modal, just show success
+      alert('Content posted successfully!');
+    } catch (error) {
+      console.error('Error posting content:', error);
+      alert('Failed to post content. Please try again.');
+    } finally {
+      setPosting(false);
     }
   };
 
@@ -347,6 +375,15 @@ export function ContentDetailModal({
                 <Button type="submit" disabled={loading}>
                   <Save className="h-4 w-4 mr-2" />
                   {loading ? 'Saving...' : 'Save'}
+                </Button>
+                <Button 
+                  type="button" 
+                  onClick={handlePost} 
+                  disabled={posting || loading}
+                  className="gradient-primary"
+                >
+                  <Send className="h-4 w-4 mr-2" />
+                  {posting ? 'Posting...' : 'Post'}
                 </Button>
               </div>
             </div>

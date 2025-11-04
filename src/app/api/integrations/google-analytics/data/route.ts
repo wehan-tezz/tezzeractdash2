@@ -137,6 +137,30 @@ export async function GET(request: NextRequest) {
 
     avgEngagementRate = rows.length > 0 ? avgEngagementRate / rows.length : 0;
 
+    // Process daily data for charts
+    const dailyData = rows.map((row: Record<string, unknown>) => {
+      const dimensionValues = row.dimensionValues as Array<{ value?: string }> | undefined;
+      const metricValues = row.metricValues as Array<{ value?: string }> | undefined;
+      
+      if (!dimensionValues || !metricValues) return null;
+      
+      // Parse date (format: YYYYMMDD)
+      const dateStr = dimensionValues[0]?.value || '';
+      const year = dateStr.substring(0, 4);
+      const month = dateStr.substring(4, 6);
+      const day = dateStr.substring(6, 8);
+      const date = new Date(`${year}-${month}-${day}`);
+      
+      return {
+        date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        impressions: parseInt(metricValues[0]?.value || '0'), // sessions
+        reach: parseInt(metricValues[1]?.value || '0'), // users
+        engagement: parseInt(metricValues[2]?.value || '0'), // page views
+        clicks: parseInt(metricValues[2]?.value || '0'), // page views
+        conversions: parseInt(metricValues[4]?.value || '0'),
+      };
+    }).filter(Boolean); // Remove any null entries
+
     const metrics = {
       impressions: totalSessions, // Using sessions as impressions
       reach: totalUsers, // Total users as reach
@@ -155,6 +179,7 @@ export async function GET(request: NextRequest) {
       success: true,
       propertyId: selectedPropertyId,
       metrics,
+      dailyData, // Include daily breakdown
       raw_data: {
         reportData,
         dateRange: {

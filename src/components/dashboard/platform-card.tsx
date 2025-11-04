@@ -12,7 +12,8 @@ import {
   BarChart3, 
   DollarSign,
   Twitter,
-  Music
+  Music,
+  Youtube
 } from 'lucide-react';
 
 interface PlatformCardProps {
@@ -63,6 +64,18 @@ const platformConfig = {
     icon: Music,
     color: 'bg-black',
     textColor: 'text-black',
+  },
+  youtube: {
+    name: 'YouTube',
+    icon: Youtube,
+    color: 'bg-red-600',
+    textColor: 'text-red-600',
+  },
+  csv_upload: {
+    name: 'CSV Upload',
+    icon: BarChart3,
+    color: 'bg-gray-600',
+    textColor: 'text-gray-600',
   },
 };
 

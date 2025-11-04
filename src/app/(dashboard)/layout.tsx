@@ -19,6 +19,7 @@ import {
 import { useTheme } from 'next-themes';
 import { createClient } from '@/lib/supabase/client';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
+import { disconnectAllPlatforms } from '@/lib/token-manager';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -81,6 +82,9 @@ export default function DashboardLayout({
 
   const handleLogout = async () => {
     try {
+      // Disconnect all platforms (removes all tokens)
+      disconnectAllPlatforms();
+      
       // Clear all localStorage data
       localStorage.clear();
       

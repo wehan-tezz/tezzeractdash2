@@ -243,14 +243,29 @@ export function OrganizationForm() {
       
       // Refresh organizations list if saved to database
       if (supabase) {
-        const { data } = await supabase
-          .from('organizations')
-          .select('*')
-          .order('created_at', { ascending: false });
+        const { data: { user } } = await supabase.auth.getUser();
         
-        if (data) {
-          setOrganizations(data);
-          setSelectedOrgId(organizationData.id);
+        if (user) {
+          // Get organizations where user is a member
+          const { data: memberData } = await supabase
+            .from('organization_members')
+            .select('organization_id')
+            .eq('user_id', user.id);
+
+          if (memberData && memberData.length > 0) {
+            const orgIds = memberData.map(m => m.organization_id);
+            
+            const { data } = await supabase
+              .from('organizations')
+              .select('*')
+              .in('id', orgIds)
+              .order('created_at', { ascending: false });
+            
+            if (data) {
+              setOrganizations(data);
+              setSelectedOrgId(organizationData.id);
+            }
+          }
         }
       }
       

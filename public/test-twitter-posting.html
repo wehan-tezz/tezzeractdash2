@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Twitter Posting Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #1DA1F2;
+            border-bottom: 3px solid #1DA1F2;
+            padding-bottom: 10px;
+        }
+        .section {
+            background: #f9f9f9;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+            border-left: 4px solid #1DA1F2;
+        }
+        label {
+            display: block;
+            margin: 10px 0 5px;
+            font-weight: bold;
+            color: #333;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        textarea {
+            min-height: 120px;
+            font-family: inherit;
+            resize: vertical;
+        }
+        button {
+            background: #1DA1F2;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            margin: 10px 5px 5px 0;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #1a91da;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        button.secondary {
+            background: #657786;
+        }
+        button.secondary:hover {
+            background: #566370;
+        }
+        .output {
+            background: #263238;
+            color: #aed581;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .status.success {
+            background: #c8e6c9;
+            color: #2e7d32;
+        }
+        .status.error {
+            background: #ffcdd2;
+            color: #c62828;
+        }
+        .status.info {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+        .char-count {
+            text-align: right;
+            font-size: 12px;
+            color: #657786;
+            margin-top: 5px;
+        }
+        .char-count.warning {
+            color: #ff9800;
+            font-weight: bold;
+        }
+        .char-count.error {
+            color: #f44336;
+            font-weight: bold;
+        }
+        .instructions {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+            border-left: 4px solid #1DA1F2;
+        }
+        .instructions ol {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .instructions li {
+            margin: 8px 0;
+        }
+        .tweet-preview {
+            background: white;
+            border: 1px solid #e1e8ed;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .tweet-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .tweet-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: #1DA1F2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        .tweet-user {
+            flex: 1;
+        }
+        .tweet-name {
+            font-weight: bold;
+            color: #14171a;
+        }
+        .tweet-handle {
+            color: #657786;
+            font-size: 14px;
+        }
+        .tweet-text {
+            color: #14171a;
+            line-height: 1.5;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🐦 Twitter Posting Test</h1>
+        <p>Test the Twitter posting functionality by composing and posting a tweet.</p>
+
+        <div class="instructions">
+            <h3>📋 Instructions:</h3>
+            <ol>
+                <li>Make sure you've connected your Twitter account in the app</li>
+                <li>Get your access token from localStorage (check console or use the button below)</li>
+                <li>Paste the access token in the field below</li>
+                <li>Compose your tweet (max 280 characters)</li>
+                <li>Click "Post Tweet" to publish</li>
+            </ol>
+        </div>
+
+        <div class="section">
+            <h2>1. Access Token</h2>
+            <label for="accessToken">Twitter Access Token:</label>
+            <input type="text" id="accessToken" placeholder="Paste your access token here">
+            <button onclick="loadTokenFromStorage()" class="secondary">Load from localStorage</button>
+            <button onclick="checkConnection()" class="secondary">Check Connection</button>
+            <div id="connectionStatus"></div>
+        </div>
+
+        <div class="section">
+            <h2>2. Compose Tweet</h2>
+            <label for="tweetText">Tweet Text:</label>
+            <textarea id="tweetText" placeholder="What's happening?" oninput="updateCharCount(); updatePreview()"></textarea>
+            <div id="charCount" class="char-count">0 / 280</div>
+            
+            <h3>Preview:</h3>
+            <div class="tweet-preview">
+                <div class="tweet-header">
+                    <div class="tweet-avatar">👤</div>
+                    <div class="tweet-user">
+                        <div class="tweet-name" id="previewName">Your Name</div>
+                        <div class="tweet-handle" id="previewHandle">@yourhandle</div>
+                    </div>
+                </div>
+                <div class="tweet-text" id="previewText">Your tweet will appear here...</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>3. Post Tweet</h2>
+            <button onclick="postTweet()" id="postButton">Post Tweet</button>
+            <button onclick="clearForm()" class="secondary">Clear</button>
+            <div id="postStatus"></div>
+        </div>
+
+        <div class="section">
+            <h2>4. Response</h2>
+            <div class="output" id="output">
+Ready to post tweets...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function log(message, type = 'info') {
+            const output = document.getElementById('output');
+            const timestamp = new Date().toLocaleTimeString();
+            const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : type === 'warning' ? '⚠️' : 'ℹ️';
+            output.textContent += `\n[${timestamp}] ${icon} ${message}`;
+            output.scrollTop = output.scrollHeight;
+        }
+
+        function loadTokenFromStorage() {
+            try {
+                const tokenStr = localStorage.getItem('twitter_tokens');
+                if (!tokenStr) {
+                    log('No Twitter token found in localStorage', 'error');
+                    alert('No Twitter token found. Please connect your Twitter account first.');
+                    return;
+                }
+
+                const tokens = JSON.parse(tokenStr);
+                if (tokens.access_token) {
+                    document.getElementById('accessToken').value = tokens.access_token;
+                    log('Access token loaded from localStorage', 'success');
+                    
+                    // Update preview with user info
+                    if (tokens.user_name) {
+                        document.getElementById('previewName').textContent = tokens.user_name;
+                    }
+                    if (tokens.username) {
+                        document.getElementById('previewHandle').textContent = '@' + tokens.username;
+                    }
+                } else {
+                    log('No access token found in stored data', 'error');
+                }
+            } catch (error) {
+                log('Error loading token: ' + error.message, 'error');
+                alert('Error loading token: ' + error.message);
+            }
+        }
+
+        async function checkConnection() {
+            const accessToken = document.getElementById('accessToken').value.trim();
+            const statusDiv = document.getElementById('connectionStatus');
+
+            if (!accessToken) {
+                statusDiv.innerHTML = '<div class="status error">❌ Please enter an access token</div>';
+                return;
+            }
+
+            statusDiv.innerHTML = '<div class="status info">⏳ Checking connection...</div>';
+            log('Checking Twitter connection...', 'info');
+
+            try {
+                const response = await fetch(`/api/integrations/twitter/post?access_token=${encodeURIComponent(accessToken)}`);
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    statusDiv.innerHTML = `
+                        <div class="status success">
+                            ✅ Connected as @${data.user.username} (${data.user.name})
+                            <br>Ready to post tweets!
+                        </div>
+                    `;
+                    log(`Connected as @${data.user.username}`, 'success');
+                    
+                    // Update preview
+                    document.getElementById('previewName').textContent = data.user.name;
+                    document.getElementById('previewHandle').textContent = '@' + data.user.username;
+                } else {
+                    statusDiv.innerHTML = `<div class="status error">❌ ${data.error || 'Connection failed'}</div>`;
+                    log('Connection failed: ' + (data.error || 'Unknown error'), 'error');
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`;
+                log('Connection error: ' + error.message, 'error');
+            }
+        }
+
+        function updateCharCount() {
+            const text = document.getElementById('tweetText').value;
+            const count = text.length;
+            const countDiv = document.getElementById('charCount');
+            
+            countDiv.textContent = `${count} / 280`;
+            
+            if (count > 280) {
+                countDiv.className = 'char-count error';
+            } else if (count > 260) {
+                countDiv.className = 'char-count warning';
+            } else {
+                countDiv.className = 'char-count';
+            }
+        }
+
+        function updatePreview() {
+            const text = document.getElementById('tweetText').value;
+            const previewDiv = document.getElementById('previewText');
+            
+            if (text.trim()) {
+                previewDiv.textContent = text;
+            } else {
+                previewDiv.textContent = 'Your tweet will appear here...';
+                previewDiv.style.color = '#657786';
+                return;
+            }
+            
+            previewDiv.style.color = '#14171a';
+        }
+
+        async function postTweet() {
+            const accessToken = document.getElementById('accessToken').value.trim();
+            const text = document.getElementById('tweetText').value.trim();
+            const statusDiv = document.getElementById('postStatus');
+            const postButton = document.getElementById('postButton');
+
+            // Validation
+            if (!accessToken) {
+                statusDiv.innerHTML = '<div class="status error">❌ Please enter an access token</div>';
+                log('No access token provided', 'error');
+                return;
+            }
+
+            if (!text) {
+                statusDiv.innerHTML = '<div class="status error">❌ Please enter tweet text</div>';
+                log('No tweet text provided', 'error');
+                return;
+            }
+
+            if (text.length > 280) {
+                statusDiv.innerHTML = '<div class="status error">❌ Tweet exceeds 280 characters</div>';
+                log('Tweet too long: ' + text.length + ' characters', 'error');
+                return;
+            }
+
+            // Disable button and show loading
+            postButton.disabled = true;
+            statusDiv.innerHTML = '<div class="status info">⏳ Posting tweet...</div>';
+            log('Posting tweet...', 'info');
+
+            try {
+                const response = await fetch('/api/integrations/twitter/post', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        access_token: accessToken,
+                        text: text,
+                    }),
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    statusDiv.innerHTML = `
+                        <div class="status success">
+                            ✅ Tweet posted successfully!
+                            <br>Tweet ID: ${data.tweet.id}
+                        </div>
+                    `;
+                    log('Tweet posted successfully! ID: ' + data.tweet.id, 'success');
+                    log('Tweet text: ' + data.tweet.text, 'info');
+                    
+                    // Clear the form
+                    document.getElementById('tweetText').value = '';
+                    updateCharCount();
+                    updatePreview();
+                } else {
+                    statusDiv.innerHTML = `<div class="status error">❌ ${data.error || 'Failed to post tweet'}</div>`;
+                    log('Failed to post tweet: ' + (data.error || 'Unknown error'), 'error');
+                    if (data.details) {
+                        log('Details: ' + data.details, 'error');
+                    }
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`;
+                log('Error posting tweet: ' + error.message, 'error');
+            } finally {
+                postButton.disabled = false;
+            }
+        }
+
+        function clearForm() {
+            document.getElementById('tweetText').value = '';
+            document.getElementById('postStatus').innerHTML = '';
+            updateCharCount();
+            updatePreview();
+            log('Form cleared', 'info');
+        }
+
+        // Initialize
+        log('Twitter Posting Test Page Loaded', 'success');
+        log('Click "Load from localStorage" to get your access token', 'info');
+        updateCharCount();
+    </script>
+</body>
+</html>
+

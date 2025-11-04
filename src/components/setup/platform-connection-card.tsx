@@ -30,26 +30,14 @@ interface PlatformConnectionCardProps {
   };
   onConnect: () => void;
   onDisconnect: () => void;
-  onTestConnection: () => void;
 }
 
 export function PlatformConnectionCard({ 
   platform, 
   onConnect, 
-  onDisconnect, 
-  onTestConnection 
+  onDisconnect
 }: PlatformConnectionCardProps) {
-  const [testing, setTesting] = useState(false);
   const Icon = platform.icon;
-
-  const handleTestConnection = async () => {
-    setTesting(true);
-    try {
-      await onTestConnection();
-    } finally {
-      setTesting(false);
-    }
-  };
 
   const getStatusBadge = () => {
     if (!platform.connected) {
@@ -114,23 +102,14 @@ export function PlatformConnectionCard({
 
         <div className="flex space-x-2">
           {platform.connected ? (
-            <>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={handleTestConnection}
-                disabled={testing}
-              >
-                {testing ? 'Testing...' : 'Test Connection'}
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={onDisconnect}
-              >
-                Disconnect
-              </Button>
-            </>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={onDisconnect}
+              className="border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700"
+            >
+              Disconnect
+            </Button>
           ) : (
             <Button 
               className="gradient-primary" 

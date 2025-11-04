@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Token Auto-Disconnect Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 900px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #555;
+            margin-top: 30px;
+        }
+
+        .test-section {
+            background: #f9f9f9;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+            border-left: 4px solid #2196F3;
+        }
+
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #45a049;
+        }
+        button.danger {
+            background: #f44336;
+        }
+        button.danger:hover {
+            background: #da190b;
+        }
+        button.info {
+            background: #2196F3;
+        }
+        button.info:hover {
+            background: #0b7dda;
+        }
+        .output {
+            background: #263238;
+            color: #aed581;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .status.connected {
+            background: #c8e6c9;
+            color: #2e7d32;
+        }
+        .status.disconnected {
+            background: #ffcdd2;
+            color: #c62828;
+        }
+        .status.expired {
+            background: #fff9c4;
+            color: #f57f17;
+        }
+        .instructions {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+            border-left: 4px solid #2196F3;
+        }
+        .instructions ol {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .instructions li {
+            margin: 8px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Token Auto-Disconnect Test</h1>
+        <p>This page tests the automatic token disconnection functionality for expired or invalid OAuth tokens.</p>
+
+        <div class="instructions">
+            <h3>📋 Test Instructions:</h3>
+            <ol>
+                <li>Click "Create Mock Token" to simulate a connected platform</li>
+                <li>Check the status - should show as "Connected"</li>
+                <li>Click "Expire Token" to simulate token expiration</li>
+                <li>Click "Check Token Status" - should show as "Expired/Invalid"</li>
+                <li>Click "Cleanup Expired Tokens" - token should be removed</li>
+                <li>Check status again - should show as "Disconnected"</li>
+            </ol>
+        </div>
+
+        <div class="test-section">
+            <h2>1. Token Management</h2>
+            <button onclick="createMockToken()">Create Mock Token</button>
+            <button onclick="expireToken()" class="danger">Expire Token</button>
+            <button onclick="checkTokenStatus()" class="info">Check Token Status</button>
+            <button onclick="cleanupTokens()" class="info">Cleanup Expired Tokens</button>
+            <button onclick="removeToken()" class="danger">Remove Token</button>
+            <div id="tokenStatus"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>2. Platform Connection Status</h2>
+            <button onclick="checkAllPlatforms()" class="info">Check All Platforms</button>
+            <button onclick="disconnectAll()" class="danger">Disconnect All</button>
+            <div id="platformStatus"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>3. Token Details</h2>
+            <button onclick="showTokenDetails()" class="info">Show Token Details</button>
+            <button onclick="showAllTokens()" class="info">Show All Tokens</button>
+            <div id="tokenDetails"></div>
+        </div>
+
+        <div class="output" id="output">
+Ready to test token auto-disconnect functionality...
+        </div>
+    </div>
+
+    <script>
+        function log(message, type = 'info') {
+            const output = document.getElementById('output');
+            const timestamp = new Date().toLocaleTimeString();
+            const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : type === 'warning' ? '⚠️' : 'ℹ️';
+            output.textContent += `\n[${timestamp}] ${icon} ${message}`;
+            output.scrollTop = output.scrollHeight;
+        }
+
+        function createMockToken() {
+            const token = {
+                access_token: 'ya29.mock_token_' + Math.random().toString(36).substring(7),
+                refresh_token: '1//mock_refresh_' + Math.random().toString(36).substring(7),
+                expires_in: 3600, // 1 hour
+                expires_at: Math.floor(Date.now() / 1000) + 3600,
+                token_type: 'Bearer',
+                scope: 'https://www.googleapis.com/auth/analytics.readonly'
+            };
+
+            localStorage.setItem('google_analytics_tokens', JSON.stringify(token));
+            log('Created mock Google Analytics token (expires in 1 hour)', 'success');
+            checkTokenStatus();
+        }
+
+        function expireToken() {
+            const tokenStr = localStorage.getItem('google_analytics_tokens');
+            if (!tokenStr) {
+                log('No token found to expire', 'error');
+                return;
+            }
+
+            const token = JSON.parse(tokenStr);
+            token.expires_at = Math.floor(Date.now() / 1000) - 3600; // Expired 1 hour ago
+            localStorage.setItem('google_analytics_tokens', JSON.stringify(token));
+            log('Token expired (set to 1 hour ago)', 'warning');
+            checkTokenStatus();
+        }
+
+        function checkTokenStatus() {
+            const tokenStr = localStorage.getItem('google_analytics_tokens');
+            const statusDiv = document.getElementById('tokenStatus');
+
+            if (!tokenStr) {
+                statusDiv.innerHTML = '<div class="status disconnected">❌ Disconnected - No token found</div>';
+                log('Token status: Disconnected (no token)', 'info');
+                return;
+            }
+
+            try {
+                const token = JSON.parse(tokenStr);
+                const now = Math.floor(Date.now() / 1000);
+                const isExpired = token.expires_at && now >= token.expires_at;
+
+                if (isExpired) {
+                    const expiredAgo = now - token.expires_at;
+                    statusDiv.innerHTML = `<div class="status expired">⚠️ Expired - Token expired ${expiredAgo} seconds ago</div>`;
+                    log(`Token status: Expired (${expiredAgo}s ago)`, 'warning');
+                } else {
+                    const expiresIn = token.expires_at - now;
+                    statusDiv.innerHTML = `<div class="status connected">✅ Connected - Token expires in ${expiresIn} seconds</div>`;
+                    log(`Token status: Valid (expires in ${expiresIn}s)`, 'success');
+                }
+            } catch (error) {
+                statusDiv.innerHTML = '<div class="status disconnected">❌ Error - Invalid token format</div>';
+                log('Token status: Error parsing token', 'error');
+            }
+        }
+
+        function cleanupTokens() {
+            const tokenStr = localStorage.getItem('google_analytics_tokens');
+            if (!tokenStr) {
+                log('No tokens to cleanup', 'info');
+                return;
+            }
+
+            try {
+                const token = JSON.parse(tokenStr);
+                const now = Math.floor(Date.now() / 1000);
+                const isExpired = token.expires_at && now >= token.expires_at;
+
+                if (isExpired) {
+                    localStorage.removeItem('google_analytics_tokens');
+                    localStorage.removeItem('google_analytics_selected_property');
+                    log('Removed expired Google Analytics token', 'success');
+                    checkTokenStatus();
+                } else {
+                    log('Token is still valid, not removing', 'info');
+                }
+            } catch (error) {
+                log('Error during cleanup: ' + error.message, 'error');
+            }
+        }
+
+        function removeToken() {
+            localStorage.removeItem('google_analytics_tokens');
+            localStorage.removeItem('google_analytics_selected_property');
+            log('Manually removed Google Analytics token', 'success');
+            checkTokenStatus();
+        }
+
+        function checkAllPlatforms() {
+            const platforms = [
+                'google_analytics_tokens',
+                'youtube_tokens',
+                'twitter_tokens',
+                'meta_tokens',
+                'linkedin_tokens'
+            ];
+
+            const statusDiv = document.getElementById('platformStatus');
+            let html = '<h3>Platform Connection Status:</h3>';
+            let connectedCount = 0;
+
+            platforms.forEach(platform => {
+                const tokenStr = localStorage.getItem(platform);
+                const platformName = platform.replace('_tokens', '').replace('_', ' ').toUpperCase();
+                
+                if (tokenStr) {
+                    try {
+                        const token = JSON.parse(tokenStr);
+                        const now = Math.floor(Date.now() / 1000);
+                        const isExpired = token.expires_at && now >= token.expires_at;
+
+                        if (isExpired) {
+                            html += `<div class="status expired">⚠️ ${platformName}: Expired</div>`;
+                        } else {
+                            html += `<div class="status connected">✅ ${platformName}: Connected</div>`;
+                            connectedCount++;
+                        }
+                    } catch (error) {
+                        html += `<div class="status disconnected">❌ ${platformName}: Invalid</div>`;
+                    }
+                } else {
+                    html += `<div class="status disconnected">❌ ${platformName}: Disconnected</div>`;
+                }
+            });
+
+            statusDiv.innerHTML = html;
+            log(`Checked all platforms: ${connectedCount} connected`, 'info');
+        }
+
+        function disconnectAll() {
+            const platforms = [
+                'google_analytics_tokens',
+                'youtube_tokens',
+                'twitter_tokens',
+                'meta_tokens',
+                'linkedin_tokens'
+            ];
+
+            let removed = 0;
+            platforms.forEach(platform => {
+                if (localStorage.getItem(platform)) {
+                    localStorage.removeItem(platform);
+                    removed++;
+                }
+            });
+
+            // Remove related data
+            localStorage.removeItem('google_analytics_selected_property');
+            localStorage.removeItem('meta_selected_page');
+            localStorage.removeItem('meta_selected_page_id');
+
+            log(`Disconnected all platforms (${removed} tokens removed)`, 'success');
+            checkAllPlatforms();
+        }
+
+        function showTokenDetails() {
+            const tokenStr = localStorage.getItem('google_analytics_tokens');
+            const detailsDiv = document.getElementById('tokenDetails');
+
+            if (!tokenStr) {
+                detailsDiv.innerHTML = '<div class="output">No token found</div>';
+                return;
+            }
+
+            try {
+                const token = JSON.parse(tokenStr);
+                const now = Math.floor(Date.now() / 1000);
+                const expiresAt = new Date(token.expires_at * 1000).toLocaleString();
+                const timeUntilExpiry = token.expires_at - now;
+
+                const details = `
+Token Details:
+--------------
+Access Token: ${token.access_token.substring(0, 20)}...
+Refresh Token: ${token.refresh_token ? token.refresh_token.substring(0, 20) + '...' : 'N/A'}
+Token Type: ${token.token_type}
+Expires At: ${expiresAt}
+Time Until Expiry: ${timeUntilExpiry > 0 ? timeUntilExpiry + ' seconds' : 'EXPIRED'}
+Scope: ${token.scope || 'N/A'}
+                `.trim();
+
+                detailsDiv.innerHTML = `<div class="output">${details}</div>`;
+                log('Displayed token details', 'info');
+            } catch (error) {
+                detailsDiv.innerHTML = '<div class="output">Error parsing token</div>';
+                log('Error displaying token details: ' + error.message, 'error');
+            }
+        }
+
+        function showAllTokens() {
+            const platforms = [
+                'google_analytics_tokens',
+                'youtube_tokens',
+                'twitter_tokens',
+                'meta_tokens',
+                'linkedin_tokens'
+            ];
+
+            let output = 'All Stored Tokens:\n' + '='.repeat(50) + '\n\n';
+            let foundCount = 0;
+
+            platforms.forEach(platform => {
+                const tokenStr = localStorage.getItem(platform);
+                const platformName = platform.replace('_tokens', '').replace('_', ' ').toUpperCase();
+                
+                if (tokenStr) {
+                    try {
+                        const token = JSON.parse(tokenStr);
+                        const now = Math.floor(Date.now() / 1000);
+                        const isExpired = token.expires_at && now >= token.expires_at;
+                        const expiresAt = token.expires_at ? new Date(token.expires_at * 1000).toLocaleString() : 'N/A';
+
+                        output += `${platformName}:\n`;
+                        output += `  Status: ${isExpired ? '❌ EXPIRED' : '✅ VALID'}\n`;
+                        output += `  Access Token: ${token.access_token.substring(0, 30)}...\n`;
+                        output += `  Expires At: ${expiresAt}\n`;
+                        output += `  Token Type: ${token.token_type || 'N/A'}\n\n`;
+                        foundCount++;
+                    } catch (error) {
+                        output += `${platformName}: ❌ INVALID FORMAT\n\n`;
+                    }
+                } else {
+                    output += `${platformName}: ❌ NOT CONNECTED\n\n`;
+                }
+            });
+
+            output += '='.repeat(50) + '\n';
+            output += `Total tokens found: ${foundCount}`;
+
+            document.getElementById('tokenDetails').innerHTML = `<div class="output">${output}</div>`;
+            log(`Displayed all tokens (${foundCount} found)`, 'info');
+        }
+
+        // Initialize
+        log('Token Auto-Disconnect Test Page Loaded', 'success');
+        log('Click "Create Mock Token" to begin testing', 'info');
+    </script>
+</body>
+</html>
+

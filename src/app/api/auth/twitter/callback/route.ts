@@ -38,7 +38,20 @@ export async function GET(request: NextRequest) {
     }
 
     const tokenData = await tokenResponse.json();
-    console.log('Twitter token received:', { expires_in: tokenData.expires_in, has_access_token: !!tokenData.access_token });
+    
+    // Log what we received (helps debug refresh token issues)
+    console.log('Twitter token received:', { 
+      expires_in: tokenData.expires_in, 
+      has_access_token: !!tokenData.access_token,
+      has_refresh_token: !!tokenData.refresh_token,
+      scope: tokenData.scope,
+      token_type: tokenData.token_type
+    });
+    
+    // Warning if no refresh token (needs offline.access scope + app approval)
+    if (!tokenData.refresh_token) {
+      console.warn('⚠️ No refresh token received. Tokens will expire in 2 hours. Enable "offline.access" in Twitter Developer Portal.');
+    }
     
     // Get user info to verify the token
     const userResponse = await fetch('https://api.twitter.com/2/users/me?user.fields=id,name,username,public_metrics', {
@@ -49,11 +62,17 @@ export async function GET(request: NextRequest) {
     const userData = await userResponse.json();
     console.log('Twitter user data:', userData);
 
+    // Calculate expiration timestamp
+    const expiresAt = tokenData.expires_in ? Math.floor(Date.now() / 1000) + tokenData.expires_in : null;
+
     // Store tokens in localStorage via URL parameters (similar to other platforms)
     const tokens = {
       access_token: tokenData.access_token,
-      refresh_token: tokenData.refresh_token,
+      refresh_token: tokenData.refresh_token || null, // null if not provided
       expires_in: tokenData.expires_in,
+      expires_at: expiresAt,
+      token_type: tokenData.token_type,
+      scope: tokenData.scope,
       user_id: userData.data?.id,
       user_name: userData.data?.name,
       username: userData.data?.username,

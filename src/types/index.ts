@@ -41,6 +41,7 @@ export type PlatformType =
   | 'google_ads' 
   | 'tiktok' 
   | 'twitter' 
+  | 'youtube'
   | 'csv_upload';
 
 export interface AnalyticsData {

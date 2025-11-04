@@ -9,6 +9,7 @@ import { CalendarView } from '@/components/calendar/calendar-view';
 import { TableView } from '@/components/calendar/table-view';
 import { ContentDetailModal } from '@/components/calendar/content-detail-modal';
 import { ContentCalendar } from '@/types';
+import { getToken, handleAuthError } from '@/lib/token-manager';
 
 export default function CalendarPage() {
   const [viewMode, setViewMode] = useState<'calendar' | 'table'>('calendar');
@@ -175,6 +176,176 @@ export default function CalendarPage() {
       localStorage.setItem('content_calendar', JSON.stringify(updatedItems));
     } catch (error) {
       console.error('Error deleting content:', error);
+    }
+  };
+
+  const handlePostContent = async (content: ContentCalendar) => {
+    try {
+      // Get the platform-specific tokens from localStorage
+      let platformTokens = null;
+      let platformType = content.platform;
+      
+      // Map platform names to token keys
+      const tokenKeyMap: Record<string, string> = {
+        'facebook': 'meta_tokens',
+        'instagram': 'meta_tokens',
+        'twitter': 'twitter_tokens',
+        'google_analytics': 'google_analytics_tokens',
+        'google_ads': 'google_analytics_tokens',
+        'linkedin': 'linkedin_tokens',
+      };
+      
+      const tokenKey = tokenKeyMap[platformType];
+      
+      if (tokenKey) {
+        const tokensStr = localStorage.getItem(tokenKey);
+        if (tokensStr) {
+          platformTokens = JSON.parse(tokensStr);
+        }
+      }
+      
+      if (!platformTokens) {
+        throw new Error(`Please connect your ${platformType} account first in the Setup page.`);
+      }
+      
+      // Handle Facebook/Instagram posting
+      if (platformType === 'facebook' || platformType === 'instagram') {
+        // Get the selected Facebook page ID
+        const savedPageId = localStorage.getItem('meta_selected_page_id');
+        
+        if (!savedPageId) {
+          throw new Error('Please select a Facebook Page first. Go to Setup > Platforms > Facebook to select a page.');
+        }
+        
+        // Prepare post data
+        const postData: Record<string, unknown> = {
+          access_token: platformTokens.access_token,
+          page_id: savedPageId,
+          message: content.caption || content.description || '',
+        };
+        
+        // Add image if available
+        if (content.attachments && Array.isArray(content.attachments) && content.attachments.length > 0) {
+          const imageAttachment = content.attachments.find((att: Record<string, unknown>) => 
+            (att.type === 'image' || att.type === 'video') && att.url
+          );
+          if (imageAttachment) {
+            const typedAttachment = imageAttachment as { type: string; url: string };
+            if (typedAttachment.type === 'image') {
+              postData.image_url = typedAttachment.url;
+            } else if (typedAttachment.type === 'video') {
+              postData.video_url = typedAttachment.url;
+            }
+          }
+        }
+        
+        // If scheduled, add timestamp
+        if (content.status === 'scheduled' && content.posting_date) {
+          const postingDate = new Date(content.posting_date);
+          postData.scheduled_publish_time = Math.floor(postingDate.getTime() / 1000);
+        }
+        
+        // Make API call to post
+        const response = await fetch('/api/integrations/meta/post', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(postData),
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || errorData.error || 'Failed to post to Facebook');
+        }
+        
+        const result = await response.json();
+        console.log('✅ Posted to Facebook:', result);
+        
+        // Update content status to published
+        const updatedContent = {
+          ...content,
+          status: 'published' as const,
+          updated_at: new Date().toISOString(),
+        };
+        
+        await handleSaveContent(updatedContent);
+        
+      } else if (platformType === 'twitter') {
+        // Twitter posting implementation
+        const tokens = getToken('twitter_tokens');
+        
+        if (!tokens) {
+          throw new Error('Please connect your Twitter account first in the Setup page.');
+        }
+        
+        // Prepare tweet text
+        let tweetText = content.caption || content.description || '';
+        
+        // Add hashtags if available
+        if (content.hashtags && content.hashtags.length > 0) {
+          const hashtagsText = content.hashtags.map(tag => 
+            tag.startsWith('#') ? tag : `#${tag}`
+          ).join(' ');
+          tweetText = `${tweetText}\n\n${hashtagsText}`;
+        }
+        
+        // Check character limit (280 characters for Twitter)
+        if (tweetText.length > 280) {
+          throw new Error(`Tweet text exceeds 280 characters (current: ${tweetText.length}). Please shorten your caption or hashtags.`);
+        }
+        
+        if (!tweetText.trim()) {
+          throw new Error('Tweet text is required. Please add a caption or description.');
+        }
+        
+        // Make API call to post tweet
+        const response = await fetch('/api/integrations/twitter/post', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            access_token: tokens.access_token,
+            text: tweetText.trim(),
+          }),
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          
+          // Handle token expiration
+          if (response.status === 401) {
+            handleAuthError('twitter_tokens');
+            throw new Error('Twitter token expired. Please reconnect your Twitter account in the Setup page.');
+          }
+          
+          throw new Error(errorData.error || errorData.details || 'Failed to post to Twitter');
+        }
+        
+        const result = await response.json();
+        console.log('✅ Posted to Twitter:', result);
+        
+        // Update content status to published
+        const updatedContent = {
+          ...content,
+          status: 'published' as const,
+          updated_at: new Date().toISOString(),
+        };
+        
+        await handleSaveContent(updatedContent);
+        
+      } else if (platformType === 'linkedin') {
+        // TODO: Implement LinkedIn posting
+        throw new Error('LinkedIn posting is not yet implemented. Coming soon!');
+        
+      } else {
+        throw new Error(`Posting to ${platformType} is not supported yet.`);
+      }
+      
+    } catch (error) {
+      console.error('Error posting content:', error);
+      throw error;
     }
   };
 
@@ -363,6 +534,7 @@ export default function CalendarPage() {
         onClose={() => setIsModalOpen(false)}
         onSave={handleSaveContent}
         onDelete={handleDeleteContent}
+        onPost={handlePostContent}
       />
     </div>
   );

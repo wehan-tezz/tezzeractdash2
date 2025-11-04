@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get('code');
-  const state = searchParams.get('state');
+  const state = searchParams.get('state'); // 'google_analytics' or 'youtube'
   const error = searchParams.get('error');
 
   if (error) {
@@ -14,6 +14,9 @@ export async function GET(request: NextRequest) {
   if (!code) {
     return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/setup?error=no_code`);
   }
+
+  // Determine which platform based on state
+  const platform = state === 'youtube' ? 'youtube' : 'google_analytics';
 
   try {
     // Exchange code for access token
@@ -62,7 +65,8 @@ export async function GET(request: NextRequest) {
     // Encode tokens to pass via URL (temporary - not secure for production)
     const encodedTokens = encodeURIComponent(JSON.stringify(tokens));
     
-    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/setup?success=google_connected&tokens=${encodedTokens}`);
+    // Include platform in the redirect so setup page knows what to do
+    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/setup?success=google_connected&platform=${platform}&tokens=${encodedTokens}`);
   } catch (error) {
     console.error('Google OAuth callback error:', error);
     return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/setup?error=callback_failed`);

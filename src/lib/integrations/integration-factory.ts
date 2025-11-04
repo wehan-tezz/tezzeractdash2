@@ -1,8 +1,9 @@
 import { BaseIntegration, IntegrationConfig } from './base-integration';
 import { MetaIntegration } from './meta-integration';
 import { GoogleAnalyticsIntegration } from './google-analytics-integration';
+import { YouTubeIntegration } from './youtube-integration';
 
-export type PlatformType = 'facebook' | 'twitter' | 'google_analytics';
+export type PlatformType = 'facebook' | 'twitter' | 'google_analytics' | 'youtube';
 
 export class IntegrationFactory {
   static createIntegration(
@@ -15,6 +16,8 @@ export class IntegrationFactory {
         return new MetaIntegration(organizationId, config);
       case 'google_analytics':
         return new GoogleAnalyticsIntegration(organizationId, config);
+      case 'youtube':
+        return new YouTubeIntegration(organizationId, config);
       default:
         throw new Error(`Unsupported platform type: ${platformType}`);
     }
@@ -45,6 +48,12 @@ export class IntegrationFactory {
         description: 'Connect your Google Analytics account',
         oauthUrl: this.getGoogleAnalyticsOAuthUrl(),
       },
+      {
+        type: 'youtube',
+        name: 'YouTube Analytics',
+        description: 'Connect your YouTube channel',
+        oauthUrl: this.getYouTubeOAuthUrl(),
+      },
     ];
   }
 
@@ -52,7 +61,7 @@ export class IntegrationFactory {
     const params = new URLSearchParams({
       client_id: process.env.META_APP_ID!,
       redirect_uri: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/meta/callback`,
-      scope: 'pages_read_engagement,pages_show_list,instagram_basic,instagram_manage_insights',
+      scope: 'pages_show_list,pages_read_engagement,pages_manage_posts,instagram_basic,instagram_content_publish,business_management',
       response_type: 'code',
     });
 
@@ -68,7 +77,8 @@ export class IntegrationFactory {
       response_type: 'code',
       client_id: process.env.TWITTER_CLIENT_ID!,
       redirect_uri: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/twitter/callback`,
-      scope: 'tweet.read users.read offline.access',
+      // Request offline.access for refresh token support
+      scope: 'tweet.read tweet.write users.read offline.access',
       state: codeVerifier, // Store code_verifier in state
       code_challenge: codeChallenge,
       code_challenge_method: 'S256',
@@ -112,6 +122,26 @@ export class IntegrationFactory {
       response_type: 'code',
       access_type: 'offline',
       prompt: 'consent',
+      state: 'google_analytics', // Identify the platform
+    });
+
+    return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+  }
+
+  private static getYouTubeOAuthUrl(): string {
+    const params = new URLSearchParams({
+      client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
+      redirect_uri: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/google/callback`,
+      scope: [
+        'https://www.googleapis.com/auth/youtube.readonly',
+        'https://www.googleapis.com/auth/yt-analytics.readonly',
+        'https://www.googleapis.com/auth/userinfo.profile',
+        'https://www.googleapis.com/auth/userinfo.email'
+      ].join(' '),
+      response_type: 'code',
+      access_type: 'offline',
+      prompt: 'consent',
+      state: 'youtube', // Identify the platform
     });
 
     return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
